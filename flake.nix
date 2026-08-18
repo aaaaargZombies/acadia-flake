@@ -4,46 +4,54 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = { self, nixpkgs, flake-utils }:
-    flake-utils.lib.eachSystem [
-      "x86_64-linux"
-      "aarch64-linux"
-      "x86_64-darwin"
-      "aarch64-darwin"
-    ] (system:
-      let
-        pkgs = import nixpkgs { inherit system; };
-        version = "0.3.0";
+  outputs = { self, nixpkgs }:
+    let
+      systems = [
+        "x86_64-linux"
+        "aarch64-linux"
+        "x86_64-darwin"
+        "aarch64-darwin"
+      ];
 
-        # per-system download suffix + hash
-        # run `nix build .#acadia --system <system>` once with fakeHash,
-        # copy the "got:" hash it reports into the table below
-        targets = {
-          x86_64-linux = {
-            suffix = "linux-x64";
-            hash = pkgs.lib.fakeHash;
-          };
-          aarch64-linux = {
-            suffix = "linux-arm";
-            hash = pkgs.lib.fakeHash;
-          };
-          x86_64-darwin = {
-            suffix = "mac-x64";
-            hash = pkgs.lib.fakeHash;
-          };
-          aarch64-darwin = {
-            suffix = "mac-arm";
-            hash = pkgs.lib.fakeHash;
-          };
+      # collapse a list of systems + a per-system function into
+      # the { packages.<system> = ...; apps.<system> = ...; } shape
+      # flakes expect. This is basically what flake-utils.eachSystem does.
+      forAllSystems = f:
+        nixpkgs.lib.genAttrs systems (system: f system);
+
+      version = "0.3.0";
+
+      # per-system download suffix + hash
+      # run `nix build .#acadia` once with fakeHash on each machine,
+      # copy the "got:" hash it reports into the table below
+      targets = {
+        x86_64-linux = {
+          suffix = "linux-x64";
+          hash = nixpkgs.lib.fakeHash;
         };
+        aarch64-linux = {
+          suffix = "linux-arm";
+          hash = nixpkgs.lib.fakeHash;
+        };
+        x86_64-darwin = {
+          suffix = "mac-x64";
+          hash = nixpkgs.lib.fakeHash;
+        };
+        aarch64-darwin = {
+          suffix = "mac-arm";
+          hash = nixpkgs.lib.fakeHash;
+        };
+      };
 
-        target = targets.${system};
-        isLinux = pkgs.stdenv.isLinux;
-
-        acadia = pkgs.stdenv.mkDerivation {
+      mkAcadia = system:
+        let
+          pkgs = import nixpkgs { inherit system; };
+          target = targets.${system};
+          isLinux = pkgs.stdenv.isLinux;
+        in
+        pkgs.stdenv.mkDerivation {
           pname = "acadia";
           inherit version;
 
@@ -72,8 +80,6 @@
             runHook postInstall
           '';
 
-          # macOS binaries need this instead of autoPatchelf, since they're
-          # not code-signed for arbitrary machines
           postFixup = pkgs.lib.optionalString pkgs.stdenv.isDarwin ''
             codesign --remove-signature $out/bin/acadia || true
             codesign -s - $out/bin/acadia || true
@@ -81,21 +87,31 @@
 
           meta = with pkgs.lib; {
             description = "Acadia CLI";
-            platforms = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
+            platforms = systems;
           };
         };
-      in
-      {
-        packages.default = acadia;
-        packages.acadia = acadia;
+    in
+    {
+      packages = forAllSystems (system: {
+        default = mkAcadia system;
+        acadia = mkAcadia system;
+      });
 
-        apps.default = {
+      apps = forAllSystems (system: {
+        default = {
           type = "app";
-          program = "${acadia}/bin/acadia";
-        };
-
-        devShells.default = pkgs.mkShell {
-          buildInputs = [ acadia ];
+          program = "${mkAcadia system}/bin/acadia";
         };
       });
+
+      devShells = forAllSystems (system:
+        let
+          pkgs = import nixpkgs { inherit system; };
+        in
+        {
+          default = pkgs.mkShell {
+            buildInputs = [ (mkAcadia system) ];
+          };
+        });
+    };
 }
