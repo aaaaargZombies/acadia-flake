@@ -29,7 +29,7 @@
       targets = {
         x86_64-linux = {
           suffix = "linux-x64";
-          hash = nixpkgs.lib.fakeHash;
+          hash = "sha256-3KT/RnyxZhe3xfoI+R++T9GxY4DOTJuicRyVcudBMsI=";
         };
         aarch64-linux = {
           suffix = "linux-arm";
