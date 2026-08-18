@@ -11,13 +11,13 @@ a `packages` output that other flakes can depend on.
 ### Run it directly
 
 ```sh
-nix run github:youruser/acadia-flake
+nix run github:aaaaargZombies/acadia-flake
 ```
 
 ### Try it in a shell
 
 ```sh
-nix develop github:youruser/acadia-flake
+nix develop github:aaaaargZombies/acadia-flake
 acadia --help
 ```
 
@@ -28,7 +28,7 @@ Add it to your `inputs`:
 ```nix
 inputs = {
   nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-  acadia.url = "github:youruser/acadia-flake";
+  acadia.url = "github:aaaaargZombies/acadia-flake";
 };
 ```
 
