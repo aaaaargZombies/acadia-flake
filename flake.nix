@@ -1,4 +1,3 @@
-# flake.nix
 {
   description = "Acadia CLI packaged for Nix";
 
@@ -15,17 +14,11 @@
         "aarch64-darwin"
       ];
 
-      # collapse a list of systems + a per-system function into
-      # the { packages.<system> = ...; apps.<system> = ...; } shape
-      # flakes expect. This is basically what flake-utils.eachSystem does.
       forAllSystems = f:
         nixpkgs.lib.genAttrs systems (system: f system);
 
       version = "0.3.0";
 
-      # per-system download suffix + hash
-      # run `nix build .#acadia` once with fakeHash on each machine,
-      # copy the "got:" hash it reports into the table below
       targets = {
         x86_64-linux = {
           suffix = "linux-x64";
