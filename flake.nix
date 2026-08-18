@@ -8,34 +8,61 @@
   };
 
   outputs = { self, nixpkgs, flake-utils }:
-    flake-utils.lib.eachDefaultSystem (system:
+    flake-utils.lib.eachSystem [
+      "x86_64-linux"
+      "aarch64-linux"
+      "x86_64-darwin"
+      "aarch64-darwin"
+    ] (system:
       let
         pkgs = import nixpkgs { inherit system; };
+        version = "0.3.0";
 
-        acadia = pkgs.stdenv.mkDerivation rec {
+        # per-system download suffix + hash
+        # run `nix build .#acadia --system <system>` once with fakeHash,
+        # copy the "got:" hash it reports into the table below
+        targets = {
+          x86_64-linux = {
+            suffix = "linux-x64";
+            hash = pkgs.lib.fakeHash;
+          };
+          aarch64-linux = {
+            suffix = "linux-arm";
+            hash = pkgs.lib.fakeHash;
+          };
+          x86_64-darwin = {
+            suffix = "mac-x64";
+            hash = pkgs.lib.fakeHash;
+          };
+          aarch64-darwin = {
+            suffix = "mac-arm";
+            hash = pkgs.lib.fakeHash;
+          };
+        };
+
+        target = targets.${system};
+        isLinux = pkgs.stdenv.isLinux;
+
+        acadia = pkgs.stdenv.mkDerivation {
           pname = "acadia";
-          version = "0.3.0";
+          inherit version;
 
           src = pkgs.fetchurl {
-            url = "https://get.acadia.engineering/acadia-${version}-linux-x64.gz";
-            # nix will tell you the correct hash on first build if you
-            # leave this as lib.fakeHash, then swap it in
-            sha256 = pkgs.lib.fakeHash;
+            url = "https://get.acadia.engineering/acadia-${version}-${target.suffix}.gz";
+            sha256 = target.hash;
           };
 
-          # it's a raw .gz, not a tarball, so skip the default unpack
           dontUnpack = true;
 
-          nativeBuildInputs = with pkgs; [
-            autoPatchelfHook
-            gzip
-          ];
+          nativeBuildInputs = with pkgs;
+            [ gzip ]
+            ++ pkgs.lib.optionals isLinux [ autoPatchelfHook ];
 
-          # add any shared libs the binary links against here
-          buildInputs = with pkgs; [
-            stdenv.cc.cc.lib
-            zlib
-          ];
+          buildInputs = with pkgs;
+            pkgs.lib.optionals isLinux [
+              stdenv.cc.cc.lib
+              zlib
+            ];
 
           installPhase = ''
             runHook preInstall
@@ -45,9 +72,16 @@
             runHook postInstall
           '';
 
+          # macOS binaries need this instead of autoPatchelf, since they're
+          # not code-signed for arbitrary machines
+          postFixup = pkgs.lib.optionalString pkgs.stdenv.isDarwin ''
+            codesign --remove-signature $out/bin/acadia || true
+            codesign -s - $out/bin/acadia || true
+          '';
+
           meta = with pkgs.lib; {
             description = "Acadia CLI";
-            platforms = [ "x86_64-linux" ];
+            platforms = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
           };
         };
       in
