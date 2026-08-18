@@ -42,7 +42,7 @@
         let
           pkgs = import nixpkgs { inherit system; };
           target = targets.${system};
-          isLinux = pkgs.stdenv.isLinux;
+          isLinux = pkgs.stdenv.hostPlatform.isLinux;
         in
         pkgs.stdenv.mkDerivation {
           pname = "acadia";
@@ -73,7 +73,7 @@
             runHook postInstall
           '';
 
-          postFixup = pkgs.lib.optionalString pkgs.stdenv.isDarwin ''
+          postFixup = pkgs.lib.optionalString pkgs.stdenv.hostPlatform.isDarwin ''
             codesign --remove-signature $out/bin/acadia || true
             codesign -s - $out/bin/acadia || true
           '';
