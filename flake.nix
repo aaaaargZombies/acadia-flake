@@ -26,15 +26,15 @@
         };
         aarch64-linux = {
           suffix = "linux-arm";
-          hash = nixpkgs.lib.fakeHash;
+          hash = "0sl8ywv6b0k5myx0vv9mlwrrr5qrfyyiid2psb8x8s2xyycj8a06";
         };
         x86_64-darwin = {
           suffix = "mac-x64";
-          hash = nixpkgs.lib.fakeHash;
+          hash = "111mz47mbkgb6wp9mmvjpy59j66xll91dlrnnd3wkih907g17vlk";
         };
         aarch64-darwin = {
           suffix = "mac-arm";
-          hash = nixpkgs.lib.fakeHash;
+          hash = "0vwz4xflia6mjbxadvkn9pixd7islqff6irw78npsb6dz41hwnd3";
         };
       };
 
